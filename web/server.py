@@ -15,7 +15,21 @@ def static_content(content):
     return render_template(content)
 
 
+@app.route('/palindrome/<palabra>')
+def es_palindrome(palabra):
+    es = True
+    for i in range(0,int(len(palabra)/2)):
+        if palabra[i] != palabra[len(palabra)-i-1]:
+            es = False
+    return str(es)
 
+@app.route('/multiplo/<numero1>/<numero2>')
+def multiplo(numero1, numero2):
+    es = False
+    if int(numero2) != 0:
+        if int(numero1)%int(numero2) == 0:
+            es = True
+    return str(es)
 
 if __name__ == '__main__':
     app.secret_key = ".."
