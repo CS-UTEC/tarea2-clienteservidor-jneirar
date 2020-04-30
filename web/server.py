@@ -10,6 +10,34 @@ engine = db.createEngine()
 app = Flask(__name__)
 
 
+@app.route('/login/<username>/<password>')
+def login(username, password):
+    db_session = db.getSession(engine)
+    respuesta = db_session.query(entities.User)
+    users = respuesta[:]
+    isLogged = ""
+    for user in users:
+        if(user.username == username and user.password == password):
+            isLogged = user.name + " " + user.fullname
+    if isLogged == "":
+        return str("No se encontró usuario o contraseña")
+    else:
+        return str("Se loggeó: " + isLogged)
+
+@app.route('/sumar/<n>')
+def sumar_stateful(n):
+    key = 'suma'
+    if key in session:
+        session[key] += int(n)
+    else:
+        session[key] = int(n)
+    return str(session[key])
+
+
+@app.route('/sumar/<n1>/<n2>')
+def sumar(n1, n2):
+    return str(int(n1)+int(n2))
+
 @app.route('/static/<content>')
 def static_content(content):
     return render_template(content)
