@@ -9,82 +9,68 @@ engine = db.createEngine()
 
 app = Flask(__name__)
 
-
-@app.route('/login/<username>/<password>')
-def login(username, password):
-    db_session = db.getSession(engine)
-    respuesta = db_session.query(entities.User)
-    users = respuesta[:]
-    isLogged = ""
-    for user in users:
-        if(user.username == username and user.password == password):
-            isLogged = user.name + " " + user.fullname
-    if isLogged == "":
-        return str("No se encontró usuario o contraseña")
-    else:
-        return str("Se loggeó: " + isLogged)
-
-@app.route('/sumar/<n>')
-def sumar_stateful(n):
-    key = 'suma'
-    if key in session:
-        session[key] += int(n)
-    else:
-        session[key] = int(n)
-    return str(session[key])
-
-
-@app.route('/sumar/<n1>/<n2>')
-def sumar(n1, n2):
-    return str(int(n1)+int(n2))
-
 @app.route('/static/<content>')
 def static_content(content):
     return render_template(content)
 
-@app.route('/palindrome/<palabra>')
-def es_palindrome(palabra):
-    es = True
-    for i in range(0,int(len(palabra)/2)):
-        if palabra[i] != palabra[len(palabra)-i-1]:
-            es = False
-    return str(es)
-
-@app.route('/multiplo/<numero1>/<numero2>')
-def multiplo(numero1, numero2):
-    es = False
-    if int(numero2) != 0:
-        if int(numero1)%int(numero2) == 0:
-            es = True
-    return str(es)
-
-#Semana 3 - Lab:
-@app.route('/create_user/<_name>/<_last>/<_password>/<_username>')
-def create_user(_name, _last, _password, _username):
+#CRUD users, create, read, update, delete
+#CREATE
+@app.route('/users', methods = ['POST'])
+def create_user():
+    body = json.loads(request.data)
     user = entities.User(
-        name = str(_name),
-        fullname = str(_last),
-        password = str(_password),
-        username = str(_username)
+        username = body['username'],
+        name = body['name'],
+        fullname = body['fullname'],
+        password = body['password']
     )
     db_session = db.getSession(engine)
     db_session.add(user)
     db_session.commit()
+    message = {'msg': 'User created'}
+    json_message = json.dumps(message, cls = connector.AlchemyEncoder)
+    return Response(json_message, status = 201, mimetype = 'application/json')
 
-    return "User created!"
-
-@app.route('/read_users')
+#READ
+@app.route('/users', methods = ['GET'])
 def read_users():
     db_session = db.getSession(engine)
-    respuesta = db_session.query(entities.User)
-    users = respuesta[:]
-    nombres = ""
-    i = 0
-    for user in users:
-        print(i, "NAME:\t", user.name)
-        i+=1
-        nombres += user.name + " " + user.fullname + " " + user.password + " " + user.username + " " + "<br>"
-    return nombres
+    response = db_session.query(entities.User)
+    users = response[:]
+    json_message = json.dumps(users, cls = connector.AlchemyEncoder)
+    return Response(json_message, status = 200, mimetype = 'application/json' )
+
+#UPDATE
+@app.route('/users/<id>', methods = ['PUT'])
+def update_user(id):
+    #Buscar usuario con el id
+    db_session = db.getSession(engine)
+    user = db_session.query(entities.User).filter(entities.User.id == id).first()
+
+    #Actualizamos los datos del usuaio
+    body = json.loads(request.data)
+    for key in body.keys():
+        setattr(user, key, body[key])
+
+    #Guardamos la actualización
+    db_session.add(user)
+    db_session.commit()
+
+    #Responder al cliente
+    message = {'msg': 'User updated'}
+    json_message = json.dumps(message, cls = connector.AlchemyEncoder)
+    return Response(json_message, status = 201, mimetype = 'application/json')
+
+#DELETE
+@app.route('/users/<id>', methods = ['DELETE'])
+def delete_user(id):
+    db_session = db.getSession(engine)
+    user = db_session.query(entities.User).filter(entities.User.id == id).first()
+    db_session.delete(user)
+    db_session.commit()
+    message = {'msg': 'User deleted'}
+    json_message = json.dumps(message, cls = connector.AlchemyEncoder)
+    return Response(json_message, status = 201, mimetype = 'application/json')
 
 if __name__ == '__main__':
     app.secret_key = ".."
